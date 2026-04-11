@@ -1,0 +1,7 @@
+# No subir archivos del sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# No subir si agregás node_modules en el futuro
+node_modules/
