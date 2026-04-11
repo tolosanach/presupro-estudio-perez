@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Presupuesto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f6f5f1;
+      color: #18181a;
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: #f6f5f1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      z-index: 100;
+    }
+    .loader {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2.5px solid #e3e2db;
+      border-top-color: #18181a;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-screen p { font-size: .84rem; color: #97968f; }
+
+    /* ── ERROR / NOT FOUND ── */
+    #error-screen {
+      display: none;
+      position: fixed; inset: 0;
+      background: #f6f5f1;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 32px; text-align: center;
+    }
+    #error-screen .err-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    #error-screen h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; }
+    #error-screen p { color: #97968f; font-size: .9rem; max-width: 320px; line-height: 1.6; }
+
+    /* ── STATUS BANNER ── */
+    #status-banner {
+      display: none;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: .82rem; font-weight: 600; letter-spacing: .03em;
+    }
+    #status-banner.accepted { background: #1a7a50; color: #fff; }
+    #status-banner.rejected { background: #b93333; color: #fff; }
+    #status-banner.viewed   { background: #18181a; color: #f6f5f1; }
+
+    /* ── MAIN LAYOUT ── */
+    #main-content { display: none; }
+
+    .viewer-wrap {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 0 0 120px; /* space for action bar */
+    }
+
+    /* ── DOCUMENT CARD ── */
+    .doc-card {
+      background: #fff;
+      margin: 20px 16px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 20px rgba(0,0,0,.08);
+    }
+    @media (min-width: 600px) {
+      .doc-card { margin: 28px 24px; }
+    }
+
+    /* ── DOC HEADER ── */
+    .dh-wrap {
+      padding: 28px 28px 20px;
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    }
+    @media (max-width: 480px) {
+      .dh-wrap { flex-direction: column; gap: 20px; }
+    }
+    .dh-left {}
+    .dh-logo { max-height: 56px; max-width: 160px; object-fit: contain; display: block; }
+    .dh-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px; font-weight: 400; letter-spacing: -1.2px;
+      line-height: .95; color: var(--cp, #18181a);
+    }
+    .dh-slogan {
+      font-size: 9px; letter-spacing: .18em;
+      color: var(--cs, #555); margin-top: 6px;
+      font-weight: 500; text-transform: uppercase;
+    }
+    .dh-right { text-align: right; flex-shrink: 0; }
+    .dh-meta { display: flex; flex-direction: column; gap: 4px; }
+    .dh-meta-row { display: flex; justify-content: flex-end; align-items: baseline; gap: 10px; }
+    .dh-label { font-size: 8px; letter-spacing: .12em; color: #aaa; font-weight: 600; text-transform: uppercase; }
+    .dh-value { font-size: 11px; font-weight: 600; color: #18181a; }
+    .dh-value.big { font-size: 15px; }
+
+    /* ── BAND ── */
+    .doc-band { height: 3px; background: var(--cp, #18181a); }
+
+    /* ── CLIENT SECTION ── */
+    .dc-section {
+      display: flex; gap: 0;
+      padding: 18px 28px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .dc-col { flex: 1; min-width: 140px; }
+    .dc-col + .dc-col {
+      padding-left: 20px;
+      border-left: 1px solid #f0f0f0;
+    }
+    .dc-label {
+      font-size: 7px; letter-spacing: .18em; color: #bbb;
+      font-weight: 700; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .dc-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .dc-info { font-size: 12px; color: #666; line-height: 1.8; }
+
+    /* ── TABLE ── */
+    .dt-wrap { overflow-x: auto; }
+    table.dt {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    table.dt thead tr { background: var(--cp, #18181a); }
+    table.dt thead th {
+      padding: 10px 14px; color: #fff;
+      font-size: 9px; letter-spacing: .12em;
+      font-weight: 600; text-transform: uppercase; white-space: nowrap;
+    }
+    table.dt thead th:last-child { text-align: right; }
+    table.dt thead th.tc { text-align: center; }
+    table.dt thead th.tr { text-align: right; }
+    table.dt tbody tr { border-bottom: 1px solid #f5f5f5; }
+    table.dt tbody tr:nth-child(even) { background: #fafafa; }
+    table.dt tbody td { padding: 12px 14px; vertical-align: top; }
+    .dt-item-name { font-weight: 600; }
+    .dt-item-desc { font-size: 10px; color: #999; margin-top: 3px; }
+    .dt-r { text-align: right; }
+    .dt-c { text-align: center; color: #666; }
+    .dt-bold { font-weight: 600; text-align: right; }
+    .dt-n { text-align: center; color: #ccc; font-size: 10px; }
+
+    /* ── TOTALS ── */
+    .totals-wrap {
+      display: flex; justify-content: flex-end;
+      padding: 16px 28px;
+    }
+    table.totals-tbl {
+      border-collapse: collapse; font-size: 12px; min-width: 220px;
+    }
+    table.totals-tbl td { padding: 4px 0; }
+    .tot-l { color: #888; padding-right: 24px; }
+    .tot-v { text-align: right; font-weight: 500; }
+    .tot-red td { color: #c0392b; }
+    tr.tot-grand { border-top: 2.5px solid var(--cp, #18181a); }
+    tr.tot-grand td { padding-top: 10px; font-size: 18px; font-weight: 700; color: var(--cp, #18181a); }
+
+    /* ── NOTES ── */
+    .notes-wrap {
+      margin: 0 28px 16px;
+      padding: 12px 16px;
+      background: #fffbf0;
+      border-left: 3px solid var(--ca, #f0a500);
+      border-radius: 0 8px 8px 0;
+      font-size: 12px; color: #555; line-height: 1.7;
+    }
+    .notes-label {
+      font-size: 7.5px; letter-spacing: .14em; color: #bbb;
+      font-weight: 700; text-transform: uppercase; margin-bottom: 5px;
+    }
+
+    /* ── CONDITIONS ── */
+    .conditions-wrap {
+      margin: 0 28px 16px;
+      font-size: 11px; color: #999; line-height: 1.8;
+    }
+
+    /* ── SIGNATURE ── */
+    .sig-wrap { padding: 0 28px 20px; }
+    .sig-line { width: 120px; border-top: 1.5px solid #ddd; margin-top: 24px; margin-bottom: 5px; }
+    .sig-name { font-size: 11px; color: #888; }
+
+    /* ── DOC FOOTER ── */
+    .doc-footer {
+      background: var(--cp, #18181a);
+      color: rgba(255,255,255,.85);
+      padding: 14px 28px;
+      font-size: 11px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .doc-footer-right { text-align: right; color: rgba(255,255,255,.5); font-size: 10px; }
+
+    /* ── ACTION BAR (fixed bottom) ── */
+    #action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(246,245,241,.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid #e3e2db;
+      padding: 14px 20px 20px;
+      display: none;
+    }
+    #action-bar.visible { display: block; }
+    .ab-inner {
+      max-width: 700px; margin: 0 auto;
+      display: flex; gap: 10px; align-items: center;
+    }
+    .ab-text {
+      flex: 1; font-size: .78rem; color: #97968f; line-height: 1.4;
+    }
+    .ab-text strong { display: block; color: #18181a; font-size: .84rem; margin-bottom: 2px; }
+    .ab-btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .btn-accept {
+      padding: 11px 22px; border-radius: 50px;
+      border: 1.5px solid #18181a; background: #18181a; color: #f6f5f1;
+      font-size: .84rem; font-weight: 600; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-accept:hover { background: #333; border-color: #333; }
+    .btn-accept:active { transform: scale(.97); }
+
+    .btn-reject {
+      padding: 11px 22px; border-radius: 50px;
+      border: 1.5px solid #e3e2db; background: transparent; color: #97968f;
+      font-size: .84rem; font-weight: 500; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-reject:hover { border-color: #b93333; color: #b93333; }
+    .btn-reject:active { transform: scale(.97); }
+
+    /* ── CONFIRMED STATES ── */
+    .ab-confirmed {
+      flex: 1; text-align: center; padding: 8px;
+    }
+    .ab-confirmed .conf-emoji { font-size: 1.8rem; display: block; margin-bottom: 4px; }
+    .ab-confirmed .conf-text { font-size: .84rem; font-weight: 600; color: #18181a; }
+    .ab-confirmed .conf-sub  { font-size: .75rem; color: #97968f; }
+
+    /* ── REJECT MODAL ── */
+    #reject-modal {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(10,10,8,.55); backdrop-filter: blur(4px);
+      align-items: flex-end; justify-content: center;
+    }
+    #reject-modal.open { display: flex; }
+    .rm-sheet {
+      background: #fdfcf9; border-radius: 20px 20px 0 0;
+      padding: 28px 24px 36px; width: 100%; max-width: 700px;
+      animation: slideUp .25s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .rm-handle {
+      width: 36px; height: 4px; background: #e3e2db; border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .rm-title { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 6px; }
+    .rm-sub { font-size: .84rem; color: #97968f; margin-bottom: 18px; }
+    .rm-textarea {
+      width: 100%; padding: 13px 16px;
+      border: 1.5px solid #e3e2db; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif; font-size: .9rem;
+      color: #18181a; resize: none; min-height: 100px; outline: none;
+      transition: border-color .15s;
+    }
+    .rm-textarea:focus { border-color: #18181a; }
+    .rm-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .rm-cancel {
+      flex: 1; padding: 12px; border-radius: 50px;
+      border: 1.5px solid #e3e2db; background: transparent; color: #97968f;
+      font-size: .84rem; cursor: pointer; transition: all .15s;
+    }
+    .rm-cancel:hover { border-color: #bbb; color: #18181a; }
+    .rm-confirm {
+      flex: 1; padding: 12px; border-radius: 50px;
+      border: 1.5px solid #b93333; background: #b93333; color: #fff;
+      font-size: .84rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .rm-confirm:hover { background: #9e2b2b; }
+    .rm-confirm:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── POWERED BY (tiny, unobtrusive) ── */
+    .powered-by {
+      text-align: center; padding: 20px;
+      font-size: .72rem; color: #ccc; letter-spacing: .04em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="loader"></div>
+  <p>Cargando presupuesto…</p>
+</div>
+
+<!-- Error -->
+<div id="error-screen">
+  <div class="err-icon">📄</div>
+  <h2>Presupuesto no encontrado</h2>
+  <p id="error-msg">Este link no es válido o el presupuesto ya no está disponible.</p>
+</div>
+
+<!-- Status banner (accepted/rejected/viewed) -->
+<div id="status-banner"></div>
+
+<!-- Main content -->
+<div id="main-content">
+  <div class="viewer-wrap">
+    <div class="doc-card" id="doc-card">
+      <!-- Rendered by JS -->
+    </div>
+    <div class="powered-by">Generado con PresuPro Studio</div>
+  </div>
+</div>
+
+<!-- Fixed action bar -->
+<div id="action-bar">
+  <div class="ab-inner" id="ab-inner">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+
+<!-- Reject modal (bottom sheet) -->
+<div id="reject-modal">
+  <div class="rm-sheet">
+    <div class="rm-handle"></div>
+    <div class="rm-title">¿Por qué rechazás el presupuesto?</div>
+    <div class="rm-sub">Opcional — podés dejarlo en blanco</div>
+    <textarea class="rm-textarea" id="reject-reason" placeholder="Ej: El precio está fuera de presupuesto..."></textarea>
+    <div class="rm-actions">
+      <button class="rm-cancel" onclick="closeRejectModal()">Cancelar</button>
+      <button class="rm-confirm" onclick="confirmReject()">Rechazar presupuesto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   PRESUPRO — viewer.js (inline)
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── CONFIG — reemplazar con tus credenciales de Supabase ── */
+var SUPABASE_URL = 'https://pdkpsbcivgndqhwitrrh.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBka3BzYmNpdmduZHFod2l0cnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4ODQzNjgsImV4cCI6MjA5MTQ2MDM2OH0.2v3mZfrceP0pyGOCkiZNcq3AT5Pzte1qkJLP_RTNDBE';
+
+/* ── STATE ── */
+var budget = null;
+var budgetId = null;
+
+/* ── BOOT ── */
+document.addEventListener('DOMContentLoaded', function() {
+  /* Validate config */
+  if (!SUPABASE_URL || SUPABASE_URL.indexOf('TU-PROYECTO') !== -1 || SUPABASE_URL.length < 15) {
+    showError('viewer.html no configurado.', 'Editá viewer.html en GitHub y reemplazá TU-PROYECTO.supabase.co con tu URL real de Supabase.');
+    return;
+  }
+  if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.indexOf('TU-ANON') !== -1 || SUPABASE_ANON_KEY.length < 30) {
+    showError('viewer.html no configurado.', 'Editá viewer.html en GitHub y reemplazá TU-ANON-KEY con tu anon key de Supabase.');
+    return;
+  }
+
+  var params = new URLSearchParams(window.location.search);
+  budgetId = params.get('id');
+  if (!budgetId) { showError('Link inválido.', 'Falta el parámetro id en la URL.'); return; }
+  loadBudget();
+});
+
+/* ── SUPABASE HELPERS ── */
+function sbUrl(path) { return SUPABASE_URL + '/rest/v1/' + path; }
+function sbHeaders(extra) {
+  var h = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+  };
+  if (extra) Object.assign(h, extra);
+  return h;
+}
+function sbGet(table, query) {
+  return fetch(sbUrl(table) + '?' + query, { headers: sbHeaders() })
+    .then(function(r) {
+      if (!r.ok) return r.text().then(function(t){
+        console.error('sbGet error', r.status, table, t);
+        throw new Error('HTTP ' + r.status + ': ' + t);
+      });
+      return r.json();
+    });
+}
+function sbPatch(table, query, body) {
+  return fetch(sbUrl(table) + '?' + query, {
+    method: 'PATCH', headers: sbHeaders(), body: JSON.stringify(body)
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ console.error('sbPatch error', r.status, table, t); });
+    return r.json().catch(function(){ return {}; });
+  });
+}
+function sbPost(table, body) {
+  return fetch(sbUrl(table), {
+    method: 'POST', headers: sbHeaders(), body: JSON.stringify(body)
+  }).then(function(r) {
+    if (!r.ok) return r.text().then(function(t){ console.error('sbPost error', r.status, table, t); });
+    return r.json().catch(function(){ return {}; });
+  });
+}
+
+/* ── LOAD BUDGET ── */
+function loadBudget() {
+  sbGet('budgets_shared', 'id=eq.' + encodeURIComponent(budgetId) + '&select=*')
+    .then(function(rows) {
+      if (!rows || rows.length === 0) { showError('Presupuesto no encontrado.', 'ID: ' + budgetId + ' no existe en la base de datos. Generá un link nuevo desde el historial de la app.'); return; }
+      var row = rows[0];
+
+      /* Check expiry */
+      if (row.expires_at && new Date(row.expires_at) < new Date()) {
+        showError('Este presupuesto venció el ' + formatDate(row.expires_at) + '.'); return;
+      }
+
+      budget = row;
+      renderDocument(row);
+      renderActionBar(row.status);
+      showStatusBanner(row.status);
+
+      /* Register view event (only if not already accepted/rejected) */
+      if (row.status !== 'accepted' && row.status !== 'rejected') {
+        registerView();
+      }
+    })
+    .catch(function(e) {
+      console.error(e);
+      var m = e.message || String(e);
+      showError('Error al conectar con Supabase.', m + ' — URL: ' + SUPABASE_URL);
+    });
+}
+
+/* ── REGISTER VIEW ── */
+function registerView() {
+  /* 1. Update budgets_shared */
+  var now = new Date().toISOString();
+  var patch = {
+    status: 'viewed',
+    view_count: (budget.view_count || 0) + 1,
+    last_viewed_at: now,
+  };
+  if (!budget.first_viewed_at) patch.first_viewed_at = now;
+
+  sbPatch('budgets_shared', 'id=eq.' + encodeURIComponent(budgetId), patch).catch(console.error);
+
+  /* 2. Insert event */
+  sbPost('budget_events', {
+    budget_id:  budgetId,
+    tenant_id:  budget.tenant_id,
+    event_type: 'viewed',
+    user_agent: navigator.userAgent.substring(0, 200),
+  }).catch(console.error);
+}
+
+/* ── ACCEPT ── */
+function acceptBudget() {
+  var now = new Date().toISOString();
+  sbPatch('budgets_shared', 'id=eq.' + encodeURIComponent(budgetId), {
+    status: 'accepted', accepted_at: now
+  }).then(function() {
+    sbPost('budget_events', {
+      budget_id: budgetId, tenant_id: budget.tenant_id,
+      event_type: 'accepted',
+    });
+    budget.status = 'accepted';
+    renderActionBar('accepted');
+    showStatusBanner('accepted');
+  }).catch(console.error);
+}
+
+/* ── REJECT ── */
+function openRejectModal() {
+  document.getElementById('reject-modal').classList.add('open');
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-reason').focus();
+}
+function closeRejectModal() {
+  document.getElementById('reject-modal').classList.remove('open');
+}
+function confirmReject() {
+  var reason = document.getElementById('reject-reason').value.trim();
+  var now = new Date().toISOString();
+  sbPatch('budgets_shared', 'id=eq.' + encodeURIComponent(budgetId), {
+    status: 'rejected', rejected_at: now,
+    reject_reason: reason || null,
+  }).then(function() {
+    sbPost('budget_events', {
+      budget_id: budgetId, tenant_id: budget.tenant_id,
+      event_type: 'rejected',
+    });
+    budget.status = 'rejected';
+    closeRejectModal();
+    renderActionBar('rejected');
+    showStatusBanner('rejected');
+  }).catch(console.error);
+}
+
+/* ── STATUS BANNER ── */
+function showStatusBanner(status) {
+  var el = document.getElementById('status-banner');
+  var messages = {
+    accepted: '✓ Presupuesto aceptado',
+    rejected: '✕ Presupuesto rechazado',
+    viewed:   '',
+    sent:     '',
+  };
+  if (!messages[status]) { el.style.display = 'none'; return; }
+  el.textContent = messages[status];
+  el.className = status;
+  el.style.display = 'block';
+}
+
+/* ── ACTION BAR ── */
+function renderActionBar(status) {
+  var bar = document.getElementById('action-bar');
+  var inner = document.getElementById('ab-inner');
+  var d = budget.budget_data || {};
+  var total = d.totals ? d.totals.total : 0;
+  var currency = d.currency || '$';
+
+  if (status === 'accepted') {
+    bar.classList.add('visible');
+    inner.innerHTML =
+      '<div class="ab-confirmed">' +
+        '<span class="conf-emoji">✅</span>' +
+        '<div class="conf-text">Presupuesto aceptado</div>' +
+        '<div class="conf-sub">El equipo fue notificado. ¡Gracias!</div>' +
+      '</div>';
+    return;
+  }
+  if (status === 'rejected') {
+    bar.classList.add('visible');
+    inner.innerHTML =
+      '<div class="ab-confirmed">' +
+        '<span class="conf-emoji">📋</span>' +
+        '<div class="conf-text">Presupuesto rechazado</div>' +
+        '<div class="conf-sub">Podés ponerte en contacto para revisar la propuesta.</div>' +
+      '</div>';
+    return;
+  }
+
+  /* Pending (sent / viewed) */
+  bar.classList.add('visible');
+  inner.innerHTML =
+    '<div class="ab-text">' +
+      '<strong>' + currency + ' ' + fmtNum(total) + '</strong>' +
+      'Total del presupuesto' +
+    '</div>' +
+    '<div class="ab-btns">' +
+      '<button class="btn-reject" onclick="openRejectModal()">Rechazar</button>' +
+      '<button class="btn-accept" onclick="acceptBudget()">Aceptar</button>' +
+    '</div>';
+}
+
+/* ── RENDER DOCUMENT ── */
+function renderDocument(row) {
+  var d = row.budget_data || {};
+  var biz     = d.biz     || {};
+  var brand   = d.brand   || {};
+  var cfg     = d.cfg     || {};
+  var client  = d.client  || {};
+  var meta    = d.meta    || {};
+  var items   = d.items   || [];
+  var totals  = d.totals  || {};
+  var notes   = d.notes   || '';
+  var currency= d.currency || '$';
+  var c = totals;
+
+  var cp = brand.colorPrimary   || '#18181a';
+  var cs = brand.colorSecondary || '#4a4a4a';
+  var ca = brand.colorAccent    || '#f0a500';
+
+  /* Inject CSS vars */
+  document.documentElement.style.setProperty('--cp', cp);
+  document.documentElement.style.setProperty('--cs', cs);
+  document.documentElement.style.setProperty('--ca', ca);
+
+  /* Hero */
+  var hero = biz.logo
+    ? '<img src="' + esc(biz.logo) + '" class="dh-logo" alt="Logo" />'
+    : '<div class="dh-name">' + esc(biz.bizName || 'Mi Negocio') + '</div>';
+  var slogan = biz.slogan ? '<div class="dh-slogan">' + esc(biz.slogan) + '</div>' : '';
+
+  /* Items rows */
+  var itemsHTML = '';
+  if (items.length > 0) {
+    items.forEach(function(it, i) {
+      itemsHTML +=
+        '<tr>' +
+          '<td class="dt-n">' + (i+1) + '</td>' +
+          '<td><div class="dt-item-name">' + esc(it.name) + '</div>' +
+            (it.description ? '<div class="dt-item-desc">' + esc(it.description) + '</div>' : '') +
+          '</td>' +
+          '<td class="dt-r">' + currency + '\u00a0' + fmtNum(it.price) + '</td>' +
+          '<td class="dt-c">' + fmtNum(it.qty) + (it.unit ? '\u00a0' + esc(it.unit) : '') + '</td>' +
+          '<td class="dt-bold">' + currency + '\u00a0' + fmtNum(it.subtotal) + '</td>' +
+        '</tr>';
+    });
+  } else {
+    itemsHTML = '<tr><td colspan="5" style="text-align:center;color:#bbb;padding:20px;font-style:italic">Sin ítems</td></tr>';
+  }
+
+  /* Totals */
+  var totHTML =
+    '<tr><td class="tot-l">Subtotal</td><td class="tot-v">' + currency + '\u00a0' + fmtNum(c.subtotal||0) + '</td></tr>' +
+    (c.discPct  > 0 ? '<tr class="tot-red"><td class="tot-l">Descuento (' + c.discPct + '%)</td><td class="tot-v">&minus; ' + currency + '\u00a0' + fmtNum(c.discAmt||0) + '</td></tr>' : '') +
+    (c.surgePct > 0 ? '<tr><td class="tot-l">Recargo (' + c.surgePct + '%)</td><td class="tot-v">+ ' + currency + '\u00a0' + fmtNum(c.surgeAmt||0) + '</td></tr>' : '') +
+    (c.taxPct   > 0 ? '<tr><td class="tot-l">Impuesto (' + c.taxPct + '%)</td><td class="tot-v">+ ' + currency + '\u00a0' + fmtNum(c.taxAmt||0) + '</td></tr>' : '') +
+    '<tr class="tot-grand"><td>TOTAL</td><td>' + currency + '\u00a0' + fmtNum(c.total||0) + '</td></tr>';
+
+  /* Footer contact */
+  var footParts = [];
+  if (biz.phone)   footParts.push(esc(biz.phone));
+  if (biz.email)   footParts.push(esc(biz.email));
+  if (biz.website) footParts.push(esc(biz.website));
+
+  document.getElementById('doc-card').innerHTML =
+    /* HEADER */
+    '<div class="dh-wrap">' +
+      '<div class="dh-left">' + hero + slogan + '</div>' +
+      '<div class="dh-right"><div class="dh-meta">' +
+        '<div class="dh-meta-row"><span class="dh-label">Presupuesto</span><span class="dh-value big">' + esc(meta.number||'—') + '</span></div>' +
+        '<div class="dh-meta-row"><span class="dh-label">Fecha</span><span class="dh-value">' + (meta.date ? formatDate(meta.date) : '—') + '</span></div>' +
+        '<div class="dh-meta-row"><span class="dh-label">Válido hasta</span><span class="dh-value">' + (meta.valid ? formatDate(meta.valid) : '—') + '</span></div>' +
+        (biz.cuit ? '<div class="dh-meta-row"><span class="dh-label">CUIT</span><span class="dh-value">' + esc(biz.cuit) + '</span></div>' : '') +
+      '</div></div>' +
+    '</div>' +
+    '<div class="doc-band"></div>' +
+
+    /* CLIENT */
+    '<div class="dc-section">' +
+      '<div class="dc-col">' +
+        '<div class="dc-label">Cliente</div>' +
+        '<div class="dc-name">' + (client.name ? esc(client.name) : '<span style="color:#bbb">Sin nombre</span>') + '</div>' +
+        (client.company ? '<div class="dc-info">' + esc(client.company) + '</div>' : '') +
+        (client.phone   ? '<div class="dc-info">' + esc(client.phone)   + '</div>' : '') +
+        (client.email   ? '<div class="dc-info">' + esc(client.email)   + '</div>' : '') +
+      '</div>' +
+      ((biz.paymentTerms || biz.deliveryTime) ?
+        '<div class="dc-col">' +
+          (biz.paymentTerms ? '<div class="dc-label">Condiciones de pago</div><div class="dc-info">' + esc(biz.paymentTerms) + '</div>' : '') +
+          (biz.deliveryTime ? '<div class="dc-label" style="margin-top:10px">Entrega estimada</div><div class="dc-info">' + esc(biz.deliveryTime) + '</div>' : '') +
+        '</div>' : '') +
+    '</div>' +
+
+    /* TABLE */
+    '<div class="dt-wrap"><table class="dt">' +
+      '<thead><tr>' +
+        '<th style="width:32px">#</th>' +
+        '<th style="text-align:left">Descripción</th>' +
+        '<th class="tr">Precio</th>' +
+        '<th class="tc">Cantidad</th>' +
+        '<th class="tr">Total</th>' +
+      '</tr></thead>' +
+      '<tbody>' + itemsHTML + '</tbody>' +
+    '</table></div>' +
+
+    /* TOTALS */
+    '<div class="totals-wrap"><table class="totals-tbl">' + totHTML + '</table></div>' +
+
+    /* NOTES */
+    (notes ?
+      '<div class="notes-wrap"><div class="notes-label">Observaciones</div>' + esc(notes) + '</div>' : '') +
+
+    /* LEGAL */
+    ((cfg.showLegal !== false) && biz.legal ?
+      '<div class="conditions-wrap">' + esc(biz.legal) + '</div>' : '') +
+
+    /* SIGNATURE */
+    ((cfg.showSignature !== false) && biz.signature ?
+      '<div class="sig-wrap"><div class="sig-line"></div><div class="sig-name">' + esc(biz.signature) + '</div></div>' : '') +
+
+    /* FOOTER */
+    (footParts.length > 0 || biz.footerText ?
+      '<div class="doc-footer">' +
+        '<div>' + footParts.join(' &nbsp;·&nbsp; ') + '</div>' +
+        '<div class="doc-footer-right">' + esc(biz.footerText||'') + '</div>' +
+      '</div>' : '');
+
+  /* Show content */
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('main-content').style.display   = 'block';
+}
+
+/* ── ERROR ── */
+function showError(msg) {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('error-screen').style.display   = 'flex';
+  document.getElementById('error-msg').textContent = msg;
+}
+
+/* ── UTILS ── */
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtNum(n) {
+  return Number(n||0).toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function formatDate(iso) {
+  if (!iso) return '—';
+  var p = iso.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+</script>
+</body>
+</html>
