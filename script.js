@@ -45,8 +45,8 @@ var KEYS = {
 /* URL y anon key van acá — la anon key es pública por diseño en Supabase,
    es seguro tenerla en el código. Solo permite lo que las políticas RLS permiten. */
 var SB = {
-  url: 'https://pxjsgtzuzrqjhqhvuxlu.supabase.co',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4anNndHp1enJxamhxaHZ1eGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTE2ODcsImV4cCI6MjA5MTU4NzY4N30.14sgo2xy9o3z4rW7fwEYS1LAIqHIMCbt-r0lmA1ElTM',
+  url: 'https://pdkpsbcivgndqhwitrrh.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBka3BzYmNpdmduZHFod2l0cnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4ODQzNjgsImV4cCI6MjA5MTQ2MDM2OH0.2v3mZfrceP0pyGOCkiZNcq3AT5Pzte1qkJLP_RTNDBE',
 };
 function SB_ENABLED() { return true; }
 
