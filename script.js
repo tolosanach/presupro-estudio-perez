@@ -85,30 +85,78 @@ function sbFetch(method, path, body) {
 
 var DEFAULTS = {
   businessConfig: {
-    bizName:'PresuPro Studio', slogan:'Presupuestos profesionales en minutos',
-    phone:'+54 9 2302 000000', whatsapp:'5492302000000',
-    email:'hola@presuprostudio.com', website:'https://www.presuprostudio.com',
-    address:'Av. Siempre Viva 742, General Pico, La Pampa', cuit:'20-12345678-9',
-    paymentAlias:'presupro.mp', paymentTerms:'50% al inicio · 50% a la entrega',
-    deliveryTime:'5 a 7 días hábiles',
+    bizName:'', slogan:'',
+    phone:'', whatsapp:'',
+    email:'', website:'',
+    address:'', cuit:'',
+    paymentAlias:'', paymentTerms:'',
+    deliveryTime:'',
     legal:'Los precios cotizados tienen validez por el plazo indicado. Pasado dicho plazo se deberá solicitar nueva cotización. Precios sin IVA salvo indicación expresa.',
-    logo:'', logoSize:60, signature:'Lic. María González — Directora Comercial',
-    footerText:'Gracias por elegirnos · presuprostudio.com',
-    thankYou:'Gracias por su consulta. Quedamos a su disposición.',
+    logo:'', logoSize:60, signature:'',
+    footerText:'', thankYou:'Gracias por su consulta. Quedamos a su disposición.',
   },
   brandConfig: { colorPrimary:'#1b9aaa', colorSecondary:'#0f4c75', colorAccent:'#f0a500', font:'DM Sans', preset:'modern' },
   budgetConfig: { prefix:'PRES-', validityDays:15, currency:'$', defaultTax:0, showDiscount:true, showSurcharge:true, showSignature:true, showLegal:true, showContactFooter:true },
-  catalog: [
-    {id:'svc1',name:'Consultoría Inicial',  description:'Diagnóstico y análisis de situación actual',            price:5000,   unit:'hora',     category:'Consultoría',active:true},
-    {id:'svc2',name:'Diseño de Identidad',  description:'Logotipo, paleta de colores y manual de marca',         price:45000,  unit:'servicio', category:'Diseño',     active:true},
-    {id:'svc3',name:'Desarrollo Web',       description:'Sitio web profesional responsive hasta 5 páginas',      price:120000, unit:'servicio', category:'Web',        active:true},
-    {id:'svc4',name:'Community Management', description:'Gestión de redes sociales — 3 publicaciones semanales', price:25000,  unit:'mes',      category:'Marketing',  active:true},
-    {id:'svc5',name:'Fotografía Comercial', description:'Sesión fotográfica de productos o espacios',            price:18000,  unit:'servicio', category:'Fotografía', active:false},
-  ],
+  catalog: [],
 };
 
 var STATE = { businessConfig:{}, brandConfig:{}, catalog:[], budgetConfig:{}, history:[] };
 
+
+
+/* ══ ONBOARDING ══════════════════════════════════════════════════════
+   Se muestra la primera vez que el usuario entra — antes de usar la app.
+   Campos obligatorios: nombre del negocio, email, contraseña nueva.
+   ════════════════════════════════════════════════════════════════ */
+function isOnboardingComplete() {
+  var b = STATE.businessConfig;
+  return !!(b.bizName && b.bizName.trim() && b.email && b.email.trim());
+}
+
+function showOnboarding() {
+  var ob = el('onboarding-overlay');
+  if (ob) ob.classList.remove('hidden');
+}
+
+function hideOnboarding() {
+  var ob = el('onboarding-overlay');
+  if (ob) ob.classList.add('hidden');
+}
+
+function completeOnboarding() {
+  var bizName = elVal('ob-biz-name').trim();
+  var email   = elVal('ob-email').trim();
+  var pw      = elVal('ob-password').trim();
+  var pw2     = elVal('ob-password2').trim();
+
+  /* Validate */
+  if (!bizName) { obError('El nombre del negocio es obligatorio'); return; }
+  if (!email || !email.includes('@')) { obError('Ingresá un email válido'); return; }
+  if (!pw || pw.length < 6) { obError('La contraseña debe tener al menos 6 caracteres'); return; }
+  if (pw !== pw2) { obError('Las contraseñas no coinciden'); return; }
+
+  /* Save business config */
+  STATE.businessConfig.bizName = bizName;
+  STATE.businessConfig.slogan  = elVal('ob-slogan').trim();
+  STATE.businessConfig.email   = email;
+  STATE.businessConfig.phone   = elVal('ob-phone').trim();
+  save(KEYS.businessConfig, STATE.businessConfig);
+
+  /* Save new password */
+  localStorage.setItem(KEYS.password, pw);
+  sessionStorage.setItem(APP_SESSION_KEY, '1');
+
+  hideOnboarding();
+  applyBrand();
+  populateAdminForms();
+  populateLoginScreen();
+  toast('¡Bienvenido! Tu cuenta está lista ✓', 'success');
+}
+
+function obError(msg) {
+  var e = el('ob-error');
+  if (e) { e.textContent = msg; e.style.display = 'block'; }
+}
 
 /* ══ SESIÓN DE APP ═══════════════════════════════════════════════════
    La contraseña protege TODO — no solo el panel admin.
@@ -128,8 +176,12 @@ function checkAppLogin() {
     sessionStorage.setItem(APP_SESSION_KEY, '1');
     document.getElementById('app-login-screen').classList.add('hidden');
     document.getElementById('app-pw-input').value = '';
-    /* Init app now that we're logged in */
-    initApp();
+    /* Check onboarding first */
+    if (!isOnboardingComplete()) {
+      showOnboarding();
+    } else {
+      initApp();
+    }
   } else {
     var errEl = document.getElementById('app-login-error');
     if (errEl) { errEl.style.display = 'block'; }
@@ -197,10 +249,15 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  /* Already logged in — hide login screen and init app */
+  /* Already logged in — hide login screen */
   var ls = document.getElementById('app-login-screen');
   if (ls) ls.classList.add('hidden');
-  initApp();
+  /* Check onboarding */
+  if (!isOnboardingComplete()) {
+    showOnboarding();
+  } else {
+    initApp();
+  }
 });
 
 function initApp() {
@@ -224,14 +281,11 @@ function loadAll() {
   /* Migrate: fix any corrupted status fields saved as objects */
   var migrated = false;
   STATE.history.forEach(function(h) {
-    if (h.status && typeof h.status === 'object') {
-      h.status = h.status.status || h.status.value || 'sent';
-      migrated = true;
-    }
-    if (h.status && ['sent','viewed','accepted','rejected'].indexOf(h.status) === -1) {
-      h.status = 'sent';
-      migrated = true;
-    }
+    var st = h.status;
+    if (st && typeof st === 'object') { h.status = st.status || st.value || 'sent'; migrated = true; }
+    else if (st === '[object Object]') { h.status = 'sent'; migrated = true; }
+    else if (st && typeof st === 'string' && ['sent','viewed','accepted','rejected'].indexOf(st) === -1) { h.status = 'sent'; migrated = true; }
+    else if (!st && h.sbId) { h.status = 'sent'; migrated = true; }
   });
   if (migrated) save(KEYS.history, STATE.history);
 }
@@ -706,6 +760,24 @@ function generateLink(idx) {
     return;
   }
   var h = STATE.history[idx]; if (!h) return;
+
+  /* If link already exists — just copy it again, don't create a new one */
+  if (h.sbId) {
+    var base = VIEWER_BASE_URL ? VIEWER_BASE_URL.replace(/\/$/, '') : window.location.href.replace(/[^/]*$/, '').replace(/\/$/, '');
+    var existingUrl = base + '/viewer.html?id=' + h.sbId;
+    var doCopyExisting = function(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          toast('Link copiado al portapapeles ✓', 'success');
+        }).catch(function() { prompt('Copiá este link:', text); });
+      } else {
+        prompt('Copiá este link:', text);
+      }
+    };
+    doCopyExisting(existingUrl);
+    return;
+  }
+
   toast('Generando link...', 'info');
 
   var payload = {
@@ -968,11 +1040,17 @@ function renderHistory() {
   }
   container.innerHTML=list.map(function(item){
     var h=item.h, idx=item.idx, c=h.client||{}, m=h.meta||{}, t=h.totals||{};
-    /* Ensure status is always a plain string, never an object */
-    var rawStatus = h.status || (h.sbId ? 'sent' : '');
-    var status    = (rawStatus && typeof rawStatus === 'object') ? (rawStatus.status || rawStatus.value || 'sent') : String(rawStatus || '');
-    /* Only allow known values */
-    if (['sent','viewed','accepted','rejected'].indexOf(status) === -1) status = h.sbId ? 'sent' : '';
+    /* Sanitize status — always a plain string */
+    var rawStatus = h.status;
+    if (rawStatus && typeof rawStatus === 'object') rawStatus = rawStatus.status || rawStatus.value || 'sent';
+    var status = String(rawStatus || (h.sbId ? 'sent' : ''));
+    /* Handle any corruption including "[object Object]" string */
+    if (!status || status.indexOf('[') === 0 || ['sent','viewed','accepted','rejected'].indexOf(status) === -1) {
+      /* Try to recover from sbId-based refresh */
+      status = h.sbId ? 'sent' : '';
+      /* Fix in storage too */
+      if (h.status !== status) { h.status = status; save(KEYS.history, STATE.history); }
+    }
     var label     = STATUS_LABELS[status] || '';
     var badgeStyle= status ? 'background:'+STATUS_BG[status]+';color:'+STATUS_COLORS[status]+';' : '';
     var viewInfo  = '';
