@@ -45,8 +45,8 @@ var KEYS = {
 /* URL y anon key van acá — la anon key es pública por diseño en Supabase,
    es seguro tenerla en el código. Solo permite lo que las políticas RLS permiten. */
 var SB = {
-  url: 'https://moekplocjjsnxzbenozv.supabase.co',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vZWtwbG9jampzbnh6YmVub3p2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTM2MDQsImV4cCI6MjA5MTU4OTYwNH0.sU6w0Ghw6zFvXNbk1KFRqXmpK_f3QSF6OzY_ZH9KjDY',
+  url: 'https://pdkpsbcivgndqhwitrrh.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBka3BzYmNpdmduZHFod2l0cnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4ODQzNjgsImV4cCI6MjA5MTQ2MDM2OH0.2v3mZfrceP0pyGOCkiZNcq3AT5Pzte1qkJLP_RTNDBE',
 };
 function SB_ENABLED() { return true; }
 
@@ -58,7 +58,7 @@ function SB_ENABLED() { return true; }
      Netlify:      'https://mi-app.netlify.app'
      Dominio:      'https://presupros.midominio.com'
    ─────────────────────────────────────────────────────────────────── */
-var VIEWER_BASE_URL = 'https://tolosanach.github.io/presupro-estudio-perez';   // ← pegar tu URL aquí (sin barra al final)
+var VIEWER_BASE_URL = '';   // ← pegar tu URL aquí (sin barra al final)
 
 function sbFetch(method, path, body) {
   if (!SB_ENABLED()) {
@@ -123,7 +123,7 @@ function isLoggedIn() {
 function checkAppLogin() {
   var pw     = document.getElementById('app-pw-input') ?
                document.getElementById('app-pw-input').value : '';
-  var stored = localStorage.getItem(KEYS.password) || '123456';
+  var stored = localStorage.getItem(KEYS.password) || 'admin123';
   if (pw === stored) {
     sessionStorage.setItem(APP_SESSION_KEY, '1');
     document.getElementById('app-login-screen').classList.add('hidden');
@@ -1102,7 +1102,7 @@ function openAdminModal() {
 }
 function closeAdminModal(){el('admin-overlay').classList.add('hidden');}
 function checkAdminPw() {
-  var pw=elVal('admin-pw-input'),stored=localStorage.getItem(KEYS.password) || '123456';
+  var pw=elVal('admin-pw-input'),stored=localStorage.getItem(KEYS.password)||'admin123';
   if(pw===stored){
     el('admin-login').classList.add('hidden'); el('admin-panel').classList.remove('hidden');
     el('admin-overlay').querySelector('.modal-box').classList.add('expanded');
@@ -1191,7 +1191,7 @@ function saveBudgetConfig() {
   save(KEYS.budgetConfig,bc); initBudgetMeta(); updatePreview(); markClean(); markClean(); markClean(); markClean(); markClean(); toast('Configuración guardada \u2713','success');
 }
 function changePassword() {
-  var cur=elVal('cfg-pw-current'),np=elVal('cfg-pw-new'),conf=elVal('cfg-pw-confirm'),stored=localStorage.getItem(KEYS.password) || '123456';
+  var cur=elVal('cfg-pw-current'),np=elVal('cfg-pw-new'),conf=elVal('cfg-pw-confirm'),stored=localStorage.getItem(KEYS.password)||'admin123';
   if(cur!==stored){toast('Contraseña actual incorrecta','error');return;}
   if(np.length<6){toast('Mínimo 6 caracteres','error');return;}
   if(np!==conf){toast('Las contraseñas no coinciden','error');return;}
