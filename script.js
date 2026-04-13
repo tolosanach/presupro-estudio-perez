@@ -1736,7 +1736,7 @@ function refreshShareStatus(shareId, idx) {
 }
 
 /* Status label helpers */
-var STATUS_LABELS = {
+var SHARE_STATUS_LABELS = {
   sent:     { text:'Enviado',   cls:'status-sent'     },
   viewed:   { text:'Visto',     cls:'status-viewed'   },
   accepted: { text:'Aceptado',  cls:'status-accepted' },
@@ -1745,7 +1745,7 @@ var STATUS_LABELS = {
 function shareStatusBadge(h) {
   if (!h.shareId) return '';
   var st = h.shareStatus || 'sent';
-  var lbl = STATUS_LABELS[st] || STATUS_LABELS.sent;
+  var lbl = SHARE_STATUS_LABELS[st] || SHARE_STATUS_LABELS.sent;
   var extra = '';
   if (st === 'viewed' && h.shareLastViewed) {
     extra = ' &middot; ' + timeAgo(h.shareLastViewed);
